@@ -132,17 +132,21 @@ def generate_club_blog_pro(audio_file_path):
     - **Image Prompt:** Write a 1-sentence prompt for an AI image generator to create a relevant cover image for this content.
 
     ### Output Format (Strict JSON):
-    IMPORTANT: The `blog_markdown` field must contain ONLY formatted Markdown text. Do NOT wrap it in JSON code blocks or include the JSON structure inside it.
+    IMPORTANT: The `blog_markdown` field must contain the FULL detailed blog post in formatted Markdown. It should be comprehensive and detailed (at least 500 words). Do NOT wrap the markdown in JSON code blocks.
 
     {
         "title": "Calculated Title",
         "summary": "Brief summary...",
-        "blog_markdown": "# Markdown Content...",
+        "blog_markdown": "# Main Title\n\n## Section 1\nContent paragraph 1...\n\n## Section 2\nContent paragraph 2...",
         "image_prompt": "Description for image generation...",
         "external_links": [
             {"title": "Resource Name", "url": "https://...", "description": "Brief description"}
         ]
     }
+    
+    CRITICAL: 
+    1. `blog_markdown` MUST NOT be empty. It must be the main body of the article.
+    2. `external_links` MUST NOT contain empty objects. If no links are found, return an empty array `[]`.
     """
 
     # 4. Generate Content with Retry Logic
@@ -179,7 +183,19 @@ def generate_club_blog_pro(audio_file_path):
         # Additional cleaning for potential "json" label at start
         text = text.replace("```json", "").replace("```", "").strip()
         data = json.loads(text)
-        logger.info("Successfully parsed AI response")
+        
+        # Sanitize Validations
+        if not data.get("blog_markdown"):
+            data["blog_markdown"] = f"# {data.get('title', 'Draft')}\n\n{data.get('summary', '')}"
+            
+        # Filter empty external links
+        if "external_links" in data:
+            data["external_links"] = [
+                link for link in data["external_links"] 
+                if link.get("title") and link.get("url")
+            ]
+            
+        logger.info("Successfully parsed and sanitized AI response")
     except Exception as e:
         logger.error(f"JSON parse error: {e}", exc_info=True)
         # Fallback data
