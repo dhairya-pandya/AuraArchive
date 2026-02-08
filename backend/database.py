@@ -59,9 +59,11 @@ def update_discussion_payload(id: str, data: dict):
     """Updates the metadata (Blog content, Title, Status, etc.)."""
     client.set_payload(
         collection_name=COLLECTION_NAME,
-        points=[id],
-        payload=data
+        payload=data,
+        points=[id]  # Correct format: list of point IDs
     )
+    logger.info(f"Updated payload for point {id}: {list(data.keys())}")
+
 
 def get_discussions_by_status(status: str):
     """Fetches discussions based on their status (REVIEW_PENDING or PUBLISHED)."""
