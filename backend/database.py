@@ -62,7 +62,7 @@ def insert_draft(id: str, status: str = "PROCESSING"):
                 vector=[0.0] * 768, # Dummy vector until we generate a real one
                 payload={
                     "status": status,
-                    "created_at": str(uuid.uuid1()) # Timestamp from UUID
+                    "created_at": id # Use the ID itself as the timestamp (UUID v1)
                 }
             )
         ]
