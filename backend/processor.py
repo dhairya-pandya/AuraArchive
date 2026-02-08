@@ -132,6 +132,8 @@ def generate_club_blog_pro(audio_file_path):
     - **Image Prompt:** Write a 1-sentence prompt for an AI image generator to create a relevant cover image for this content.
 
     ### Output Format (Strict JSON):
+    IMPORTANT: The `blog_markdown` field must contain ONLY formatted Markdown text. Do NOT wrap it in JSON code blocks or include the JSON structure inside it.
+
     {
         "title": "Calculated Title",
         "summary": "Brief summary...",
@@ -165,7 +167,17 @@ def generate_club_blog_pro(audio_file_path):
     # 5. Parse JSON
     try:
         # Clean up code blocks if Gemini adds them
-        text = response.text.replace("```json", "").replace("```", "")
+        # Clean up code blocks if Gemini adds them
+        text = response.text.strip()
+        if text.startswith("```"):
+            # Remove first line (```json or ```)
+            text = text.split("\n", 1)[1]
+            # Remove last line (```)
+            if text.strip().endswith("```"):
+                text = text.strip()[:-3]
+        
+        # Additional cleaning for potential "json" label at start
+        text = text.replace("```json", "").replace("```", "").strip()
         data = json.loads(text)
         logger.info("Successfully parsed AI response")
     except Exception as e:
