@@ -38,6 +38,19 @@ def init_db():
             collection_name=COLLECTION_NAME,
             vectors_config=models.VectorParams(size=768, distance=models.Distance.COSINE)
         )
+    
+    # CRITICAL: Create keyword index on 'status' field for filtering
+    try:
+        client.create_payload_index(
+            collection_name=COLLECTION_NAME,
+            field_name="status",
+            field_schema=models.PayloadSchemaType.KEYWORD
+        )
+        logger.info("Payload index on 'status' field created/verified")
+    except Exception as e:
+        # Index might already exist, log and continue
+        logger.info(f"Status index creation skipped (may already exist): {e}")
+
 
 def insert_draft(id: str, status: str = "PROCESSING"):
     """Creates a placeholder entry for a new upload."""
@@ -49,7 +62,7 @@ def insert_draft(id: str, status: str = "PROCESSING"):
                 vector=[0.0] * 768, # Dummy vector until we generate a real one
                 payload={
                     "status": status,
-                    "created_at": str(uuid.uuid1()) # Timestamp from UUID
+                    "created_at": id # Use the ID itself as the timestamp (UUID v1)
                 }
             )
         ]
@@ -59,9 +72,11 @@ def update_discussion_payload(id: str, data: dict):
     """Updates the metadata (Blog content, Title, Status, etc.)."""
     client.set_payload(
         collection_name=COLLECTION_NAME,
-        points=[id],
-        payload=data
+        payload=data,
+        points=[id]  # Correct format: list of point IDs
     )
+    logger.info(f"Updated payload for point {id}: {list(data.keys())}")
+
 
 def get_discussions_by_status(status: str):
     """Fetches discussions based on their status (REVIEW_PENDING or PUBLISHED)."""

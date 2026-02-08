@@ -103,24 +103,50 @@ def generate_club_blog_pro(audio_file_path):
 
     # 3. The Prompt
     prompt = """
-    You are the Scribe for a University Tech Club. Listen to this discussion.
-    
-    Goal: Create a structured blog post.
-    
-    1. **Content:** Summarize the technical discussion into a blog post (Markdown).
-    2. **Resources:** If you know relevant documentation links or tutorials, include up to 3 (optional).
-    3.  **Visuals:** Describe a cool cover image for this post in 1 sentence.
+    You are an expert Content Architect and Editor. Your goal is to transform this audio into a high-quality, structured document that perfectly matches its context.
 
-    Output strictly in this JSON format:
+    ### 1. Analyze the Audio Context:
+    First, identify what kind of audio this is:
+    - **Meeting/Discussion:** Multiple people discussing topics, making decisions.
+    - **Interview/Podcast:** Host and guest(s) Q&A format.
+    - **Lecture/Talk:** Single speaker teaching or explaining concepts.
+    - **Story/Narrative:** Personal experience or storytelling.
+    - **Casual Conversation:** Informal chat.
+
+    ### 2. Output Requirements:
+    Based on the context, structure the `blog_markdown` field accordingly (in Markdown):
+
+    - **If Meeting:** Use **Meeting Minutes** format. Include Attendees (inferred), Agenda, Key Discussion Points, Decisions Made, and Action Items.
+    - **If Interview:** Use **Q&A** or **Feature Article** format. Highlight the guest's insights.
+    - **If Lecture:** Use **Study Guide** or **Article** format with clear headings and bullet points.
+    - **If Story/Casual:** Use **Blog Post** narrative format.
+
+    ### 3. General Rules:
+    - **Title:** Create a catchy, relevant title.
+    - **Summary:** A concise executive summary (2-3 sentences).
+    - **Speakers:** If multiple speakers are detected, differentiate them (e.g., "Speaker A", "Host", "Guest", or by name if mentioned).
+    - **Tone:** Professional yet engaging.
+    - **Links:** If specific tools, books, or real-world concepts are mentioned, provide up to 3 relevant Google Search-style links in the `external_links` array.
+
+    ### 4. Visuals:
+    - **Image Prompt:** Write a 1-sentence prompt for an AI image generator to create a relevant cover image for this content.
+
+    ### Output Format (Strict JSON):
+    IMPORTANT: The `blog_markdown` field must contain the FULL detailed blog post in formatted Markdown. It should be comprehensive and detailed (at least 500 words). Do NOT wrap the markdown in JSON code blocks.
+
     {
-        "title": "String",
-        "summary": "String",
-        "blog_markdown": "String (Markdown)",
-        "image_prompt": "String",
+        "title": "Calculated Title",
+        "summary": "Brief summary...",
+        "blog_markdown": "# Main Title\n\n## Section 1\nContent paragraph 1...\n\n## Section 2\nContent paragraph 2...",
+        "image_prompt": "Description for image generation...",
         "external_links": [
-            {"title": "String", "url": "String", "description": "String"}
+            {"title": "Resource Name", "url": "https://...", "description": "Brief description"}
         ]
     }
+    
+    CRITICAL: 
+    1. `blog_markdown` MUST NOT be empty. It must be the main body of the article.
+    2. `external_links` MUST NOT contain empty objects. If no links are found, return an empty array `[]`.
     """
 
     # 4. Generate Content with Retry Logic
@@ -145,9 +171,31 @@ def generate_club_blog_pro(audio_file_path):
     # 5. Parse JSON
     try:
         # Clean up code blocks if Gemini adds them
-        text = response.text.replace("```json", "").replace("```", "")
+        # Clean up code blocks if Gemini adds them
+        text = response.text.strip()
+        if text.startswith("```"):
+            # Remove first line (```json or ```)
+            text = text.split("\n", 1)[1]
+            # Remove last line (```)
+            if text.strip().endswith("```"):
+                text = text.strip()[:-3]
+        
+        # Additional cleaning for potential "json" label at start
+        text = text.replace("```json", "").replace("```", "").strip()
         data = json.loads(text)
-        logger.info("Successfully parsed AI response")
+        
+        # Sanitize Validations
+        if not data.get("blog_markdown"):
+            data["blog_markdown"] = f"# {data.get('title', 'Draft')}\n\n{data.get('summary', '')}"
+            
+        # Filter empty external links
+        if "external_links" in data:
+            data["external_links"] = [
+                link for link in data["external_links"] 
+                if link.get("title") and link.get("url")
+            ]
+            
+        logger.info("Successfully parsed and sanitized AI response")
     except Exception as e:
         logger.error(f"JSON parse error: {e}", exc_info=True)
         # Fallback data

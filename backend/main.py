@@ -44,7 +44,7 @@ def home():
 @app.post("/api/upload")
 async def upload_audio(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
     """Receives audio, returns ID, starts AI in background."""
-    session_id = str(uuid.uuid4())
+    session_id = str(uuid.uuid1())
     
     # Save temp file
     file_path = f"temp_{session_id}_{file.filename}"
